@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emoji DEX</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: auto;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .swap-container {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .token-input {
+            margin-bottom: 15px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-right: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        select {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #message {
+            text-align: center;
+            margin-top: 20px;
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Emoji DEX</h1>
+        <div class="swap-container">
+            <div class="token-input">
+                <input type="text" id="tokenAAmount" placeholder="Amount of Token A">
+                <select id="tokenA">
+                    <option value="😀">😀 (Emoji A)</option>
+                    <option value="😎">😎 (Emoji B)</option>
+                </select>
+            </div>
+            <div class="token-input">
+                <input type="text" id="tokenBAmount" placeholder="Amount of Token B">
+                <select id="tokenB">
+                    <option value="😎">😎 (Emoji B)</option>
+                    <option value="😀">😀 (Emoji A)</option>
+                </select>
+            </div>
+            <button id="swapButton">Swap</button>
+        </div>
+        <p id="message"></p>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
