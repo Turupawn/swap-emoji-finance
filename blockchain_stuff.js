@@ -196,6 +196,7 @@ const swapAToB = async (amountTokenOut) => {
   })
   .on('receipt', function(receipt){
     document.getElementById("web3_message").textContent="Success.";    })
+    window.location.reload()
   .catch((revertReason) => {
     console.log("ERROR! Transaction reverted: " + revertReason.receipt.transactionHash)
   });
@@ -210,6 +211,7 @@ const swapBToA = async (amountTokenOut) => {
   })
   .on('receipt', function(receipt){
     document.getElementById("web3_message").textContent="Success.";    })
+    window.location.reload()
   .catch((revertReason) => {
     console.log("ERROR! Transaction reverted: " + revertReason.receipt.transactionHash)
   });
@@ -251,6 +253,7 @@ const mintA = async () => {
   })
   .on('receipt', function(receipt){
     document.getElementById("web3_message").textContent="Success.";    })
+    window.location.reload()
   .catch((revertReason) => {
     console.log("ERROR! Transaction reverted: " + revertReason.receipt.transactionHash)
   });
@@ -264,6 +267,7 @@ const mintB = async () => {
   })
   .on('receipt', function(receipt){
     document.getElementById("web3_message").textContent="Success.";    })
+    window.location.reload()
   .catch((revertReason) => {
     console.log("ERROR! Transaction reverted: " + revertReason.receipt.transactionHash)
   });
