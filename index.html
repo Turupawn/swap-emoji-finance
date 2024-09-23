@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emoji DEX</title>
+    <title>swap.emoji.finance</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -22,6 +22,10 @@
         }
 
         h1 {
+            text-align: center;
+        }
+
+        h3 {
             text-align: center;
         }
 
@@ -66,30 +70,129 @@
             margin-top: 20px;
             color: red;
         }
+
+        input:disabled {
+            background-color: #f0f0f0; /* Light grey background */
+            color: #525252; /* Grey text color */
+            cursor: not-allowed; /* Show not-allowed cursor */
+        }
     </style>
 </head>
 <body>
+    <input id="connect_button" type="button" value="Connect" onclick="connectWallet()" style="display: none"></input>
+    <p id="account_address" style="display: none"></p>
+    <p id="web3_message"></p>
+    <p id="contract_state"></p>
     <div class="container">
-        <h1>Emoji DEX</h1>
+        <h1>swap.emoji.finance</h1>
+        <h3><i>testnet</i></h3>
+        <div id="token_balances" style="font-size: 16px; color: #444; background-color: #f0f0f0; padding: 15px; border-radius: 8px; text-align: center; max-width: 320px; margin: 0 auto;">
+          <div style="margin-bottom: 10px;">Balances: <span id="token_a_balance">--</span> A / <span id="token_b_balance">--</span> B</div>
+          <div style="display: flex; justify-content: center; gap: 10px;">
+              <button id="approve_token_a" onclick="_approveA()" style="padding: 10px 16px; background-color: #ff7613; color: white; border: none; border-radius: 5px; cursor: pointer;">✅Approve A</button>
+              <button id="approve_token_b" onclick="_approveB()" style="padding: 10px 16px; background-color: #ff7613; color: white; border: none; border-radius: 5px; cursor: pointer;">✅Approve B</button>
+          </div>
+          <div style="display: flex; justify-content: center; gap: 10px;">
+            <button id="mint_token_a" onclick="_mintA()" style="padding: 10px 16px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">🪄Mint A</button>
+            <button id="mint_token_b" onclick="_mintB()" style="padding: 10px 16px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">🪄Mint B</button>
+          </div>
+        </div>
         <div class="swap-container">
             <div class="token-input">
-                <input type="text" id="tokenAAmount" placeholder="Amount of Token A">
-                <select id="tokenA">
-                    <option value="😀">😀 (Emoji A)</option>
-                    <option value="😎">😎 (Emoji B)</option>
+                <input type="text" id="_tokenInAmount" placeholder="0" disabled>
+                <select id="tokenIn">
+                    <option value="🅰️">🅰️ (Token A)</option>
+                    <option value="🅱️">🅱️ (Token B)</option>
                 </select>
+            </div>
+            <div>
+                <p style="text-align: center;">⬇️</p>
             </div>
             <div class="token-input">
-                <input type="text" id="tokenBAmount" placeholder="Amount of Token B">
-                <select id="tokenB">
-                    <option value="😎">😎 (Emoji B)</option>
-                    <option value="😀">😀 (Emoji A)</option>
+                <input type="text" id="_tokenOutAmount" placeholder="0">
+                <select id="tokenOut">
+                    <option value="🅱️">🅱️ (Token B)</option>
+                    <option value="🅰️">🅰️ (Token A)</option>
                 </select>
             </div>
-            <button id="swapButton">Swap</button>
+            <button id="swapButton" onclick="_swap()">🔁Swap</button>
         </div>
         <p id="message"></p>
     </div>
-    <script src="app.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.3.5/web3.min.js"></script>
+    <script type="text/javascript" src="blockchain_stuff.js"></script>
+    
+    <script>
+    // Synchronize token selection between the two dropdowns
+    document.getElementById("tokenIn").addEventListener("change", function() {
+        const tokenInValue = this.value;
+        const tokenOutSelect = document.getElementById("tokenOut");
+
+        if (tokenInValue === "🅰️") {
+            tokenOutSelect.value = "🅱️";
+        } else if (tokenInValue === "🅱️") {
+            tokenOutSelect.value = "🅰️";
+        }
+        document.getElementById("_tokenInAmount").value = ""
+        document.getElementById("_tokenOutAmount").value = ""
+    });
+
+    document.getElementById("tokenOut").addEventListener("change", function() {
+        const tokenOutValue = this.value;
+        const tokenInSelect = document.getElementById("tokenIn");
+
+        if (tokenOutValue === "🅱️") {
+            tokenInSelect.value = "🅰️";
+        } else if (tokenOutValue === "🅰️") {
+            tokenInSelect.value = "🅱️";
+        }
+        document.getElementById("_tokenInAmount").value = ""
+        document.getElementById("_tokenOutAmount").value = ""
+    });
+
+    document.getElementById("_tokenOutAmount").addEventListener("input", function(event) {
+      const newValue = event.target.value;
+      const tokenOutSelectValue = document.getElementById("tokenOut").value;
+      if(tokenOutSelectValue === "🅰️")
+      {
+        onTokenAAmountChanged(newValue);
+      }else
+      {
+        onTokenBAmountChanged(newValue);
+      }
+    });
+    function _swap()
+    {
+      _tokenOutAmount = document.getElementById("_tokenOutAmount").value
+      const tokenInSelectValue = document.getElementById("tokenIn").value;
+      if(tokenInSelectValue === "🅰️")
+      {
+        swapAToB(_tokenOutAmount);
+      }else
+      {
+        swapBToA(_tokenOutAmount);
+      }
+    }
+
+    function _approveA()
+    {
+      approveA()
+    }
+
+    function _approveB()
+    {
+      approveB()
+    }
+
+    function _mintA()
+    {
+      mintA()
+    }
+
+    function _mintB()
+    {
+      mintB()
+    }
+    </script>
 </body>
 </html>

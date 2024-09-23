@@ -15,6 +15,8 @@ var web3
 
 var liquidityA
 var liquidityB
+var amountTokenIn
+var slippage = 1003000000000000000n // 0.3%
 
 function metamaskReloadCallback() {
   window.ethereum.on('accountsChanged', (accounts) => {
@@ -76,7 +78,7 @@ async function loadDapp() {
         var awaitContract = async function () {
           dex_contract = await getContract(web3, DEX_ADDRESS, DEX_ABI_PATH)
           erc20a_contract = await getContract(web3, ERC20A_ADDRESS, ERC20_ABI_PATH)
-          erc20b_contract = await getContract(web3, ERC20A_ADDRESS, ERC20_ABI_PATH)
+          erc20b_contract = await getContract(web3, ERC20B_ADDRESS, ERC20_ABI_PATH)
           document.getElementById("web3_message").textContent="You are connected to Metamask"
           onContractInitCallback()
           web3.eth.getAccounts(function(err, _accounts){
@@ -96,7 +98,7 @@ async function loadDapp() {
         };
         awaitContract();
       } else {
-        document.getElementById("web3_message").textContent="Please connect to Goerli";
+        document.getElementById("web3_message").textContent="Please connect to Scroll Sepolia";
       }
     });
   };
@@ -118,7 +120,7 @@ const onContractInitCallback = async () => {
   var contract_state = "Balance A: " + liquidityA
       + ", Balance B: " + liquidityB
       + ", k: " + k
-  document.getElementById("contract_state").textContent = contract_state;
+  //document.getElementById("contract_state").textContent = contract_state;
   return
   var last_writer = await my_contract.methods.count().call()
 
@@ -126,19 +128,60 @@ const onContractInitCallback = async () => {
 }
 
 const onWalletConnectedCallback = async () => {
+  // Get Token A Balance
+  const tokenABalanceWei = await erc20a_contract.methods.balanceOf(accounts[0]).call();
+  const tokenABalance = web3.utils.fromWei(tokenABalanceWei, 'ether');
+  
+  // Get Token B Balance
+  const tokenBBalanceWei = await erc20b_contract.methods.balanceOf(accounts[0]).call();
+  const tokenBBalance = web3.utils.fromWei(tokenBBalanceWei, 'ether');
+  
+  // Update the combined balances
+  document.getElementById('token_a_balance').textContent = formatTokenBalance(tokenABalance);
+  document.getElementById('token_b_balance').textContent = formatTokenBalance(tokenBBalance);
+};
 
-    return
+// Helper function to format balances up to 1,000,000.00
+function formatTokenBalance(balance) {
+  const numBalance = parseFloat(balance);
+  if (numBalance > 1000000) {
+    return "1M+";
+  }
+  return numBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-async function onValueChanged(amountTokenOut) {
-  amountTokenOut = BigInt(web3.utils.toWei(amountTokenOut))
-  let amountTokenIn = (liquidityA * amountTokenOut)/(liquidityB - amountTokenOut)
-  if(amountTokenOut>liquidityB)
+async function onTokenAAmountChanged(amountTokenOut) {
+  if(amountTokenOut=="")
   {
-    document.getElementById("_A_AtoB").value = "Not enough liquidity for this trade";
+    document.getElementById("_tokenInAmount").value = 0;
     return;
   }
-  document.getElementById("_A_AtoB").value = web3.utils.fromWei(""+amountTokenIn);
+  amountTokenOut = BigInt(web3.utils.toWei(amountTokenOut))
+  amountTokenIn = (liquidityB * amountTokenOut)/(liquidityA - amountTokenOut)
+  amountTokenIn = amountTokenIn * slippage/BigInt(web3.utils.toWei("1"))
+  if(amountTokenOut>liquidityA)
+  {
+    document.getElementById("_tokenInAmount").value = "Not enough liquidity for this trade";
+    return;
+  }
+  document.getElementById("_tokenInAmount").value = web3.utils.fromWei(""+amountTokenIn);
+}
+
+async function onTokenBAmountChanged(amountTokenOut) {
+  if(amountTokenOut=="")
+  {
+    document.getElementById("_tokenInAmount").value = 0;
+    return;
+  }
+  amountTokenOut = BigInt(web3.utils.toWei(amountTokenOut))
+  amountTokenIn = (liquidityA * amountTokenOut)/(liquidityB - amountTokenOut)
+  amountTokenIn = amountTokenIn * slippage/BigInt(web3.utils.toWei("1"))
+  if(amountTokenOut>liquidityB)
+  {
+    document.getElementById("_tokenInAmount").value = "Not enough liquidity for this trade";
+    return;
+  }
+  document.getElementById("_tokenInAmount").value = web3.utils.fromWei(""+amountTokenIn);
 }
 
 
@@ -146,12 +189,75 @@ async function onValueChanged(amountTokenOut) {
 
 const swapAToB = async (amountTokenOut) => {
   amountTokenOut = BigInt(web3.utils.toWei(amountTokenOut))
-  let amountTokenIn = (liquidityA * amountTokenOut)/(liquidityB - amountTokenOut)
-  const slippage = BigInt(web3.utils.toWei("1.003")); // (0.1%)
-  amountTokenIn = amountTokenIn*slippage/BigInt(web3.utils.toWei("1"));;
-  console.log(amountTokenIn)
-  console.log(amountTokenOut)
   const result = await dex_contract.methods.aButtonBButton(amountTokenIn, amountTokenOut)
+  .send({ from: accounts[0], gas: 0, value: 0 })
+  .on('transactionHash', function(hash){
+    document.getElementById("web3_message").textContent="Executing...";
+  })
+  .on('receipt', function(receipt){
+    document.getElementById("web3_message").textContent="Success.";    })
+  .catch((revertReason) => {
+    console.log("ERROR! Transaction reverted: " + revertReason.receipt.transactionHash)
+  });
+}
+
+const swapBToA = async (amountTokenOut) => {
+  amountTokenOut = BigInt(web3.utils.toWei(amountTokenOut))
+  const result = await dex_contract.methods.bButtonAButton(amountTokenIn, amountTokenOut)
+  .send({ from: accounts[0], gas: 0, value: 0 })
+  .on('transactionHash', function(hash){
+    document.getElementById("web3_message").textContent="Executing...";
+  })
+  .on('receipt', function(receipt){
+    document.getElementById("web3_message").textContent="Success.";    })
+  .catch((revertReason) => {
+    console.log("ERROR! Transaction reverted: " + revertReason.receipt.transactionHash)
+  });
+}
+
+const approveA = async () => {
+  let approveAmount = BigInt(await erc20a_contract.methods.balanceOf(accounts[0]).call())
+  const result = await erc20a_contract.methods.approve(DEX_ADDRESS, approveAmount)
+  .send({ from: accounts[0], gas: 0, value: 0 })
+  .on('transactionHash', function(hash){
+    document.getElementById("web3_message").textContent="Executing...";
+  })
+  .on('receipt', function(receipt){
+    document.getElementById("web3_message").textContent="Success.";    })
+  .catch((revertReason) => {
+    console.log("ERROR! Transaction reverted: " + revertReason.receipt.transactionHash)
+  });
+}
+
+const approveB = async () => {
+  let approveAmount = BigInt(await erc20b_contract.methods.balanceOf(accounts[0]).call())
+  const result = await erc20b_contract.methods.approve(DEX_ADDRESS, approveAmount)
+  .send({ from: accounts[0], gas: 0, value: 0 })
+  .on('transactionHash', function(hash){
+    document.getElementById("web3_message").textContent="Executing...";
+  })
+  .on('receipt', function(receipt){
+    document.getElementById("web3_message").textContent="Success.";    })
+  .catch((revertReason) => {
+    console.log("ERROR! Transaction reverted: " + revertReason.receipt.transactionHash)
+  });
+}
+
+const mintA = async () => {
+  const result = await erc20a_contract.methods.mint()
+  .send({ from: accounts[0], gas: 0, value: 0 })
+  .on('transactionHash', function(hash){
+    document.getElementById("web3_message").textContent="Executing...";
+  })
+  .on('receipt', function(receipt){
+    document.getElementById("web3_message").textContent="Success.";    })
+  .catch((revertReason) => {
+    console.log("ERROR! Transaction reverted: " + revertReason.receipt.transactionHash)
+  });
+}
+
+const mintB = async () => {
+  const result = await erc20b_contract.methods.mint()
   .send({ from: accounts[0], gas: 0, value: 0 })
   .on('transactionHash', function(hash){
     document.getElementById("web3_message").textContent="Executing...";
